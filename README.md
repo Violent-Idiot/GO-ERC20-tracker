@@ -6,17 +6,19 @@ GO program to fetch top 15 INST holders using ERC20 Transfer events.
 
 ### Dependencies
 
-* Go-ethereum
+- Go-ethereum
 
 ### Executing program
 
-* Set env variables for ethereum endpoint.
-* Execute using GO
+- Set env variables for ethereum endpoint.
+- Execute using GO
+
 ```
 go run main.go
 ```
 
 ## Workflow
+
 1. I have connected ethereum network using infura endpoints.
 2. Using the provided contract address, I am filtering the logs.
 3. I copied abi file and parse it using given abi parser in go-ethereum for reading the logs.
