@@ -31,15 +31,18 @@ type Transfer struct {
 var TransferArray []Transfer
 
 func main() {
+	os.Setenv("INFURA", "wss://mainnet.infura.io/ws/v3/eb979022577d4b55b620e583cc58ba72")
 	endpoint := os.Getenv("INFURA")
 	client, err := ethclient.DialContext(context.Background(), endpoint)
 	if err != nil {
 		log.Fatal(err)
 	}
 	addr := common.HexToAddress("0x6f40d4a6237c257fff2db00fa0510deeecd303eb")
+	logTransferSig := []byte("Transfer(address,address,uint256)")
+	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
 	upperBound := 14119242
-	lowerBound := 14101404
-	// lowerBound := 12631404
+	// lowerBound := 14101404
+	lowerBound := 12631404
 	// TotalBlocks := upperBound - lowerBound
 	// tempUpperBound := upperBound
 	limit := 10000
@@ -54,6 +57,7 @@ func main() {
 			FromBlock: big.NewInt(int64(lowerBound)), //14095312
 			ToBlock:   big.NewInt(int64(tempUpperBound)),
 			Addresses: []common.Address{addr},
+			Topics:    [][]common.Hash{{logTransferSigHash}},
 		}
 
 		templogs, err := client.FilterLogs(context.Background(), query)
@@ -97,9 +101,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logTransferSig := []byte("Transfer(address,address,uint256)")
-	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
+
 	H := make(map[string]int)
+	log.Println(len(logs))
 	for index, vLog := range logs {
 		// fmt.Printf("\nLog Block Number: %d\n", vLog.BlockNumber)
 		// fmt.Printf("Log Index: %d\n", vLog.Index)
@@ -142,6 +146,7 @@ func main() {
 		return ss[i].Value > ss[j].Value
 	})
 	ss = ss[:15]
+
 	for _, kv := range ss {
 		fmt.Printf("%s %d\n", kv.Key, kv.Value)
 	}
