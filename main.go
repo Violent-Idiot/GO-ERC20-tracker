@@ -29,12 +29,6 @@ type Transfer struct {
 
 var TransferArray []Transfer
 
-// type LogApproval struct {
-// 	Owner   common.Address
-// 	Spender common.Address
-// 	Amount  *big.Int
-// }
-
 func main() {
 	endpoint := os.Getenv("INFURA")
 	client, err := ethclient.DialContext(context.Background(), endpoint)
@@ -63,16 +57,11 @@ func main() {
 		log.Fatal(err)
 	}
 	logTransferSig := []byte("Transfer(address,address,uint256)")
-	// LogApprovalSig := []byte("Approval(address,address,uint256)")
 	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
-	// logApprovalSigHash := crypto.Keccak256Hash(LogApprovalSig)
 	for _, vLog := range logs {
 		// fmt.Printf("\nLog Block Number: %d\n", vLog.BlockNumber)
 		// fmt.Printf("Log Index: %d\n", vLog.Index)
-
-		switch vLog.Topics[0].Hex() {
-		case logTransferSigHash.Hex():
-			// fmt.Printf("Log Name: Transfer\n")
+		if vLog.Topics[0].Hex() == logTransferSigHash.Hex() {
 
 			var transferEvent LogTransfer
 
@@ -89,25 +78,6 @@ func main() {
 				Amount: transferEvent.Amount.String(),
 			}
 			TransferArray = append(TransferArray, temp)
-			// fmt.Printf("From: %s\n", transferEvent.From.Hex())
-			// fmt.Printf("To: %s\n", transferEvent.To.Hex())
-			// fmt.Printf("Tokens: %s\n", transferEvent.Amount.String())
-			// case logApprovalSigHash.Hex():
-			// 	fmt.Printf("Log Name: Approval\n")
-
-			// 	var approvalEvent LogApproval
-
-			// 	err := parsed.UnpackIntoInterface(&approvalEvent, "Approval", vLog.Data)
-			// 	if err != nil {
-			// 		log.Fatal(err)
-			// 	}
-
-			// 	approvalEvent.Owner = common.HexToAddress(vLog.Topics[1].Hex())
-			// 	approvalEvent.Spender = common.HexToAddress(vLog.Topics[2].Hex())
-
-			// 	fmt.Printf("Token Owner: %s\n", approvalEvent.Owner.Hex())
-			// 	fmt.Printf("Spender: %s\n", approvalEvent.Spender.Hex())
-			// 	fmt.Printf("Tokens: %s\n\n", approvalEvent.Amount.String())
 		}
 	}
 	sort.Slice(TransferArray, func(i, j int) bool {
