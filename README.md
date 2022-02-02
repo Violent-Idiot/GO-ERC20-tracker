@@ -6,7 +6,7 @@ GO program to fetch top 15 INST holders using ERC20 Transfer events.
 
 ### Dependencies
 
-* Go-etherium
+* Go-ethereum
 
 ### Executing program
 
