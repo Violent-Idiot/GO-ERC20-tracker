@@ -42,7 +42,7 @@ func main() {
 	logTransferSigHash := crypto.Keccak256Hash(logTransferSig)
 	upperBound := 14119242
 	// lowerBound := 14101404
-	lowerBound := 12631404
+	lowerBound := 12183236
 	// TotalBlocks := upperBound - lowerBound
 	// tempUpperBound := upperBound
 	limit := 10000
@@ -102,13 +102,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	H := make(map[string]int)
+	H := make(map[string]*big.Int)
 	log.Println(len(logs))
+	// ctx := context.Background()
+	init := true
+
 	for index, vLog := range logs {
 		// fmt.Printf("\nLog Block Number: %d\n", vLog.BlockNumber)
 		// fmt.Printf("Log Index: %d\n", vLog.Index)
 
 		fmt.Println("mapping", index)
+		// log.Print(vLog.Topics[0].Hex(), logTransferSigHash.Hex())
 		if vLog.Topics[0].Hex() == logTransferSigHash.Hex() {
 
 			var transferEvent LogTransfer
@@ -120,9 +124,60 @@ func main() {
 
 			transferEvent.From = common.HexToAddress(vLog.Topics[1].Hex())
 			transferEvent.To = common.HexToAddress(vLog.Topics[2].Hex())
-			account := common.HexToAddress(transferEvent.From.Hex())
-			bal, _ := client.BalanceAt(context.Background(), account, nil)
-			H[transferEvent.From.Hex()] = int(bal.Uint64())
+			// account := common.HexToAddress(transferEvent.From.Hex())
+			fmt.Println(transferEvent.From.Hex(), transferEvent.To.Hex(), transferEvent.Amount.String())
+			bigInt := new(big.Int)
+			bInt, _ := bigInt.SetString(transferEvent.Amount.String(), 10)
+			// break
+			// bInt
+			// fmt.Println(bInt)
+			// break
+			// fmt.Println(H[transferEvent.From.Hex()])
+			// break
+			// if big.NewInt(0).Sub(H[transferEvent.From.Hex()], bInt) < big.NewInt(0){
+			// if H[transferEvent.From.Hex()].Cmp(bInt) == -1 {
+			from := H[transferEvent.From.Hex()]
+			to := H[transferEvent.To.Hex()]
+			if to == nil {
+				to = big.NewInt(0)
+			}
+			if from == nil {
+				from = big.NewInt(0)
+			}
+			// to := big.NewInt(0)
+			fmt.Println(init)
+
+			if init {
+				// yoamn = big.NewInt(0)
+				fmt.Println("here")
+				// fmt.Println(to)
+				from = big.NewInt(0)
+				to = to.Add(to, bInt)
+				// H[transferEvent.From.Hex()] = from
+
+				// H[transferEvent.To.Hex()] = to
+
+				fmt.Println(from, to)
+
+				init = false
+
+			} else {
+				// H[transferEvent.From.Hex()] = big.NewInt(0).Sub(H[transferEvent.From.Hex()], bInt)
+				// H[transferEvent.To.Hex()] = big.NewInt(0).Add(H[transferEvent.To.Hex()], bInt)
+
+				from = from.Sub(from, bInt)
+				to = to.Add(to, bInt)
+				fmt.Println(from, to, bInt)
+
+			}
+			H[transferEvent.From.Hex()] = from
+
+			H[transferEvent.To.Hex()] = to
+			// fmt.Println(H[transferEvent.To.Hex()])
+			// break
+			// bal, _ := client.BalanceAt(ctx, account, nil)
+			// fmt.Println(transferEvent.From.Hex())
+			// H[transferEvent.From.Hex()] = int(bal.Uint64())
 			// fmt.Println(transferEvent.From.Hex(), bal)
 			// temp := Transfer{
 			// 	From:   transferEvent.From.Hex(),
@@ -134,20 +189,26 @@ func main() {
 	}
 	type kv struct {
 		Key   string
-		Value int
+		Value *big.Int
 	}
 
 	var ss []kv
+
 	for k, v := range H {
 		ss = append(ss, kv{k, v})
 	}
 
-	sort.Slice(ss, func(i, j int) bool {
-		return ss[i].Value > ss[j].Value
+	sort.SliceStable(ss, func(i, j int) bool {
+		// return ss[i].Value > ss[j].Value
+		// fmt.Println(ss[i].Value, ss[j].Value, ss[i].Value.Cmp(ss[j].Value) > 1)
+		return ss[i].Value.Cmp(ss[j].Value) > 1
 	})
 	ss = ss[:15]
 
 	for _, kv := range ss {
+		// temp := new(big.Float)
+		// temp.SetUint64(kv.Value)
+		// value := new(big.Float).Quo(temp, big.NewFloat(math.Pow10(18)))
 		fmt.Printf("%s %d\n", kv.Key, kv.Value)
 	}
 
