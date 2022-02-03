@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"os"
 	"sort"
@@ -102,7 +103,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	H := make(map[string]*big.Int)
+	// H := make(map[string]*big.Int)
+	H := make(map[string]float64)
 	log.Println(len(logs))
 	// ctx := context.Background()
 	init := true
@@ -126,8 +128,11 @@ func main() {
 			transferEvent.To = common.HexToAddress(vLog.Topics[2].Hex())
 			// account := common.HexToAddress(transferEvent.From.Hex())
 			fmt.Println(transferEvent.From.Hex(), transferEvent.To.Hex(), transferEvent.Amount.String())
-			bigInt := new(big.Int)
-			bInt, _ := bigInt.SetString(transferEvent.Amount.String(), 10)
+			// bigInt := new(big.Int)
+			// bInt, _ := bigInt.SetString(transferEvent.Amount.String(), 10)
+			bFloat, _ := new(big.Float).SetString(transferEvent.Amount.String())
+			floatValue := new(big.Float).Quo(bFloat, big.NewFloat(math.Pow10(18)))
+			fValue, _ := floatValue.Float64()
 			// break
 			// bInt
 			// fmt.Println(bInt)
@@ -138,12 +143,14 @@ func main() {
 			// if H[transferEvent.From.Hex()].Cmp(bInt) == -1 {
 			from := H[transferEvent.From.Hex()]
 			to := H[transferEvent.To.Hex()]
-			if to == nil {
-				to = big.NewInt(0)
-			}
-			if from == nil {
-				from = big.NewInt(0)
-			}
+			// if to == nil {
+			// 	// to = big.NewInt(0)
+			// 	to = 0
+			// }
+			// if from == nil {
+			// 	// from = big.NewInt(0)
+			// 	from = 0
+			// }
 			// to := big.NewInt(0)
 			fmt.Println(init)
 
@@ -151,8 +158,10 @@ func main() {
 				// yoamn = big.NewInt(0)
 				fmt.Println("here")
 				// fmt.Println(to)
-				from = big.NewInt(0)
-				to = to.Add(to, bInt)
+				from = 0
+				// from = big.NewInt(0)
+				// to = to.Add(to, bInt)
+				to += fValue
 				// H[transferEvent.From.Hex()] = from
 
 				// H[transferEvent.To.Hex()] = to
@@ -165,11 +174,13 @@ func main() {
 				// H[transferEvent.From.Hex()] = big.NewInt(0).Sub(H[transferEvent.From.Hex()], bInt)
 				// H[transferEvent.To.Hex()] = big.NewInt(0).Add(H[transferEvent.To.Hex()], bInt)
 
-				from = from.Sub(from, bInt)
-				to = to.Add(to, bInt)
-				fmt.Println(from, to, bInt)
+				// from = from.Sub(from, bInt)
+				// to = to.Add(to, bInt)
+				from -= fValue
+				to += fValue
 
 			}
+			fmt.Println(from, to, fValue)
 			H[transferEvent.From.Hex()] = from
 
 			H[transferEvent.To.Hex()] = to
@@ -189,7 +200,8 @@ func main() {
 	}
 	type kv struct {
 		Key   string
-		Value *big.Int
+		Value float64
+		// Value *big.Int
 	}
 
 	var ss []kv
@@ -198,10 +210,10 @@ func main() {
 		ss = append(ss, kv{k, v})
 	}
 
-	sort.SliceStable(ss, func(i, j int) bool {
-		// return ss[i].Value > ss[j].Value
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value > ss[j].Value
 		// fmt.Println(ss[i].Value, ss[j].Value, ss[i].Value.Cmp(ss[j].Value) > 1)
-		return ss[i].Value.Cmp(ss[j].Value) > 1
+		// return ss[i].Value.Cmp(ss[j].Value) > 1
 	})
 	ss = ss[:15]
 
@@ -209,7 +221,7 @@ func main() {
 		// temp := new(big.Float)
 		// temp.SetUint64(kv.Value)
 		// value := new(big.Float).Quo(temp, big.NewFloat(math.Pow10(18)))
-		fmt.Printf("%s %d\n", kv.Key, kv.Value)
+		fmt.Printf("%s %f\n", kv.Key, kv.Value)
 	}
 
 	defer client.Close()
