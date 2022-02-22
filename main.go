@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"os"
 	"sort"
+	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -32,7 +34,12 @@ type Transfer struct {
 var TransferArray []Transfer
 
 func main() {
+	start := time.Now()
+	defer func() {
+		fmt.Println("Exection time: ", time.Since(start))
+	}()
 	os.Setenv("INFURA", "wss://mainnet.infura.io/ws/v3/eb979022577d4b55b620e583cc58ba72")
+	choose := 0
 	endpoint := os.Getenv("INFURA")
 	client, err := ethclient.DialContext(context.Background(), endpoint)
 	if err != nil {
@@ -48,29 +55,81 @@ func main() {
 	tempUpperBound := lowerBound + limit
 	var logs []types.Log
 	flag := false
-	for {
+	paginate := (upperBound - lowerBound) / limit
+	fmt.Println(paginate)
+	wg := sync.WaitGroup{}
+	if choose == 0 {
 
-		query := ethereum.FilterQuery{
-			FromBlock: big.NewInt(int64(lowerBound)), //14095312
-			ToBlock:   big.NewInt(int64(tempUpperBound)),
-			Addresses: []common.Address{addr},
-			Topics:    [][]common.Hash{{logTransferSigHash}},
-		}
+		for i := 0; i < paginate; i++ {
 
-		templogs, err := client.FilterLogs(context.Background(), query)
-		if err != nil {
-			log.Fatal(err)
+			fmt.Println(i)
+			wg.Add(1)
+			lower := lowerBound + (i * limit)
+			tempUpper := tempUpperBound + (i * limit)
+			// fmt.Println(lower, tempUpper)
+			if tempUpper > upperBound {
+				tempUpper = upperBound
+				flag = true
+				// break
+			}
+			if flag {
+				break
+			}
+			go func(lower, tempUpper int) {
+				query := ethereum.FilterQuery{
+					FromBlock: big.NewInt(int64(lower)), //14095312
+					ToBlock:   big.NewInt(int64(tempUpper)),
+					Addresses: []common.Address{addr},
+					Topics:    [][]common.Hash{{logTransferSigHash}},
+				}
+
+				templogs, err := client.FilterLogs(context.Background(), query)
+				if err != nil {
+					log.Fatal(err)
+				}
+				logs = append(logs, templogs...)
+				// lowerBound += limit
+				// tempUpperBound += limit
+				fmt.Println(lower, tempUpper)
+				// if tempUpperBound >= upperBound {
+				// 	tempUpperBound = upperBound
+				// 	flag = true
+				// }
+				// if flag {
+				// 	break
+				// }
+				wg.Done()
+			}(lower, tempUpper)
+
 		}
-		logs = append(logs, templogs...)
-		lowerBound += limit
-		tempUpperBound += limit
-		fmt.Println(lowerBound, tempUpperBound)
-		if tempUpperBound >= upperBound {
-			tempUpperBound = upperBound
-			flag = true
-		}
-		if flag {
-			break
+		wg.Wait()
+	}
+	if choose == 1 {
+
+		for {
+
+			query := ethereum.FilterQuery{
+				FromBlock: big.NewInt(int64(lowerBound)), //14095312
+				ToBlock:   big.NewInt(int64(tempUpperBound)),
+				Addresses: []common.Address{addr},
+				Topics:    [][]common.Hash{{logTransferSigHash}},
+			}
+
+			templogs, err := client.FilterLogs(context.Background(), query)
+			if err != nil {
+				log.Fatal(err)
+			}
+			logs = append(logs, templogs...)
+			lowerBound += limit
+			tempUpperBound += limit
+			fmt.Println(lowerBound, tempUpperBound)
+			if tempUpperBound >= upperBound {
+				tempUpperBound = upperBound
+				flag = true
+			}
+			if flag {
+				break
+			}
 		}
 	}
 	fmt.Println("here")
@@ -102,7 +161,7 @@ func main() {
 
 			transferEvent.From = common.HexToAddress(vLog.Topics[1].Hex())
 			transferEvent.To = common.HexToAddress(vLog.Topics[2].Hex())
-			fmt.Println(transferEvent.From.Hex(), transferEvent.To.Hex(), transferEvent.Amount.String())
+			// fmt.Println(transferEvent.From.Hex(), transferEvent.To.Hex(), transferEvent.Amount.String())
 			bFloat, _ := new(big.Float).SetString(transferEvent.Amount.String())
 			floatValue := new(big.Float).Quo(bFloat, big.NewFloat(math.Pow10(18)))
 			fValue, _ := floatValue.Float64()
@@ -119,7 +178,7 @@ func main() {
 				from -= fValue
 				to += fValue
 			}
-			fmt.Println(from, to, fValue)
+			// fmt.Println(from, to, fValue)
 			H[transferEvent.From.Hex()] = from
 			H[transferEvent.To.Hex()] = to
 		}
